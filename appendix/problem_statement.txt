@@ -1,0 +1,2 @@
+"Develop a C program to simulate a Traffic Signal Synchronization System across multiple intersections. 
+The system should adjust signal timings dynamically based on traffic density and maintain synchronization across intersections to optimize traffic flow."
