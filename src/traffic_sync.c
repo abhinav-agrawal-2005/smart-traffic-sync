@@ -1,80 +1,53 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/shm.h;
-#include <sys/sem.h>
-#include <sys/wait.h>
 #include <time.h>
 
-#define NUM_SIGNALS 3
+#define NUM_SIGNALS 4
+#define MAX_CYCLES 5
 
-void sem_lock(int semid) {
-    struct sembuf sb = {0, -1, 0};
-    semop(semid, &sb, 1);
+void displaySignals(int congestion[], int greenIndex) {
+    printf("\nSignal Status:\n");
+    for (int i = 0; i < NUM_SIGNALS; i++) {
+        if (i == greenIndex) {
+            printf("Signal %d : GREEN (Congestion = %d)\n", i + 1, congestion[i]);
+        } else {
+            printf("Signal %d : RED   (Congestion = %d)\n", i + 1, congestion[i]);
+        }
+    }
 }
 
-void sem_unlock(int semid) {
-    struct sembuf sb = {0, 1, 0};
-    semop(semid, &sb, 1);
+int findMaxCongestion(int congestion[]) {
+    int maxIndex = 0;
+    for (int i = 1; i < NUM_SIGNALS; i++) {
+        if (congestion[i] > congestion[maxIndex]) {
+            maxIndex = i;
+        }
+    }
+    return maxIndex;
 }
 
 int main() {
+    int congestion[NUM_SIGNALS];
     srand(time(NULL));
 
-    int shmid = shmget(IPC_PRIVATE, NUM_SIGNALS * sizeof(int), IPC_CREAT | 0666);
-    int *congestion = (int *) shmat(shmid, NULL, 0);
+    printf("SMART CITY TRAFFIC SIGNAL SYNCHRONIZATION\n");
+    printf("=======================================\n");
 
-    int semid = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666);
-    semctl(semid, 0, SETVAL, 1);
+    for (int cycle = 1; cycle <= MAX_CYCLES; cycle++) {
 
-    printf("\nSMART CITY TRAFFIC SIGNAL SYNCHRONIZATION SIMULATION\n\n");
+        printf("\nCycle %d\n", cycle);
+        printf("-----------------------------\n");
 
-    for (int i = 0; i < NUM_SIGNALS; i++) {
-        pid_t pid = fork();
-
-        if (pid == 0) {
-            for (int t = 0; t < 5; t++) {
-
-                sem_lock(semid);
-
-                congestion[i] = rand() % 101;
-
-                printf("Signal %d updated congestion → %d\n", i + 1, congestion[i]);
-
-                int max = congestion[0];
-                int maxIndex = 0;
-
-                for (int j = 1; j < NUM_SIGNALS; j++) {
-                    if (congestion[j] > max) {
-                        max = congestion[j];
-                        maxIndex = j;
-                    }
-                }
-
-                if (i == maxIndex) {
-                    printf(">>> Signal %d: GREEN (highest congestion: %d)\n\n", i + 1, congestion[i]);
-                } else {
-                    printf("Signal %d: RED (congestion: %d)\n\n", i + 1, congestion[i]);
-                }
-
-                sem_unlock(semid);
-
-                sleep(1);
-            }
-            exit(0);
+        for (int i = 0; i < NUM_SIGNALS; i++) {
+            congestion[i] = rand() % 100;
         }
+
+        int greenSignal = findMaxCongestion(congestion);
+        displaySignals(congestion, greenSignal);
+
+        printf("Green signal allocated to Signal %d\n", greenSignal + 1);
     }
 
-    for (int i = 0; i < NUM_SIGNALS; i++) {
-        wait(NULL);
-    }
-
-    shmdt(congestion);
-    shmctl(shmid, IPC_RMID, NULL);
-    semctl(semid, 0, IPC_RMID);
-
-    printf("Simulation Completed Successfully.\n");
-
+    printf("\nSimulation Finished Successfully.\n");
     return 0;
 }
